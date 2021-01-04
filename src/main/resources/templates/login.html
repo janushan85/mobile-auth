@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Login</title>
+    <meta name="google-signin-client_id" th:attr="content=${googleClientId}">
+    <meta name="google-signin-scope" th:attr="content=${googleScope}">
+    <meta name="appleid-signin-client-id" th:attr="content=${appleClientId}">
+    <meta name="appleid-signin-scope" th:attr="content=${appleClientScope}">
+    <meta name="appleid-signin-redirect-uri" th:attr="content=${appleRedirectUri}">
+    <meta name="appleid-signin-state" th:attr="content=${appleClientState}">
+    <meta name="appleid-signin-nonce" content="b9d8c2fa-594c-4023-9a98-332edf3ddc72">
+    <meta name="appleid-signin-use-popup" content="true">
+
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script async defer crossorigin="anonymous" th:src="|https://connect.facebook.net/ko_KR/sdk.js#xfbml=1&version=v9.0&appId=${facebookClientId}&autoLogAppEvents=1|" nonce="TegU7uqs"></script>
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+</head>
+<body>
+<h2>Login</h2>
+<form id="loginForm" method="post" action="/login">
+    <label for="username">Username</label>:
+    <input type="text" id="username" name="username" autofocus="autofocus" />
+    <label for="password">Password</label>:
+    <input type="password" id="password" name="password" />
+    <input type="submit" value="Log in" />
+</form>
+<hr />
+<div class="g-signin2" data-onsuccess="googleLogin" data-theme="dark"></div>
+<div id="fb-root"></div>
+<div class="fb-login-button" data-scope="email" data-width="" data-size="medium" data-button-type="continue_with" data-layout="default" data-auto-logout-link="false" data-use-continue-as="false" data-onlogin="fbLogin();"></div>
+<div id="appleid-signin" data-color="black" data-border="true" data-type="sign in" style="height: 50px;"></div>
+<script>
+  $(document).ready(function () {
+    const loginForm = $('#loginForm');
+    loginForm.on('submit', function(e) {
+      e.preventDefault();
+      $.ajax({
+        url: loginForm.attr('action'),
+        type: 'post',
+        data: loginForm.serialize(),
+        success: function (response) {
+          console.log('Login successful.', response);
+          sessionStorage.setItem("token", response.accessToken);
+          location.href = '/';
+        },
+        error: function (error) {
+          console.error(error);
+        }
+      });
+    });
+
+    document.addEventListener('AppleIDSignInOnSuccess', (data) => {
+      appleLogin(data);
+    });
+
+    document.addEventListener('AppleIDSignInOnFailure', (error) => {
+      console.error(error);
+    });
+  });
+
+  function googleLogin(googleUser) {
+    socialLogin(googleUser.getAuthResponse().id_token, 'GOOGLE');
+  }
+
+  function fbLogin() {
+    FB.getLoginStatus(function(response) {
+      if (response.status !== 'connected') {
+        return;
+      }
+      socialLogin(response.authResponse.accessToken, 'FACEBOOK');
+    });
+  }
+
+  function appleLogin(data) {
+    socialLogin(data.detail.authorization.id_token, 'APPLE');
+  }
+
+  function socialLogin(idToken, provider) {
+    $.ajax({
+      url: '/login/social',
+      contentType: 'application/json',
+      dataType: 'json',
+      processData: false,
+      method: 'POST',
+      data: JSON.stringify({
+        provider: provider,
+        token: idToken
+      }),
+      success: function (response) {
+        console.log('Social Login Successful.', response);
+        sessionStorage.setItem("token", response.accessToken);
+        location.href = '/';
+      },
+      error: function (e) {
+        console.error(e);
+      }
+    });
+  }
+</script>
+<p><a href="/registration">Registration</a></p>
+</body>
+</html>
